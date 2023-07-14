@@ -1,0 +1,12 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+
+input{
+    @apply border-2 border-gray-300 rounded-md px-1 w-full;
+    @apply mb-2;
+}
+input:focus{
+    @apply border-blue-900;
+}
