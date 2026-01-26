@@ -1,6 +1,9 @@
 import { useState } from 'react';
 import { useRouter } from 'next/router';
 import axios from 'axios';
+import toast from 'react-hot-toast';
+import { categories } from '@/lib/categories';
+import ImageUpload from './ImageUpload';
 
 export default function ProductForm({
   _id,
@@ -29,21 +32,23 @@ export default function ProductForm({
     setError('');
 
     const data = { title, description, price, category, images, stock, sku };
+    const loadingToast = toast.loading(_id ? "Yangilanmoqda..." : "Saqlanmoqda...");
 
     try {
       if (_id) {
         // Update existing product
         await axios.put(`/api/products/${_id}`, data);
+        toast.success("Mahsulot muvaffaqiyatli yangilandi!", { id: loadingToast });
       } else {
         // Create new product
         await axios.post('/api/products', data);
+        toast.success("Mahsulot muvaffaqiyatli qo'shildi!", { id: loadingToast });
       }
       router.push('/products');
     } catch (error) {
-      setError(
-        error.response?.data?.error ||
-        'Xatolik yuz berdi. Iltimos qaytadan urinib ko\'ring.'
-      );
+      const errorMsg = error.response?.data?.error || 'Xatolik yuz berdi. Iltimos qaytadan urinib ko\'ring.';
+      toast.error(errorMsg, { id: loadingToast });
+      setError(errorMsg);
       setIsLoading(false);
     }
   }
@@ -74,13 +79,18 @@ export default function ProductForm({
         <label className="block text-gray-700 font-semibold mb-2">
           Kategoriya
         </label>
-        <input
-          type="text"
-          placeholder="Kategoriya"
+        <select
           value={category}
           onChange={(e) => setCategory(e.target.value)}
           className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-        />
+        >
+          <option value="">Kategoriyani tanlang</option>
+          {categories.map((cat) => (
+            <option key={cat} value={cat}>
+              {cat}
+            </option>
+          ))}
+        </select>
       </div>
 
       <div className="mb-4">
@@ -141,21 +151,7 @@ export default function ProductForm({
         </div>
       </div>
 
-      <div className="mb-4">
-        <label className="block text-gray-700 font-semibold mb-2">
-          Rasmlar (URL)
-        </label>
-        <input
-          type="text"
-          placeholder="Rasm URL manzili"
-          value={images.join(', ')}
-          onChange={(e) => setImages(e.target.value.split(',').map(url => url.trim()).filter(url => url))}
-          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-        />
-        <p className="text-sm text-gray-500 mt-1">
-          Bir nechta rasm uchun URL manzillarini vergul bilan ajrating
-        </p>
-      </div>
+      <ImageUpload images={images} setImages={setImages} />
 
       <div className="flex gap-2">
         <button
