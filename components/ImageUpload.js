@@ -1,0 +1,129 @@
+import { useCallback, useState } from 'react';
+import { useDropzone } from 'react-dropzone';
+import axios from 'axios';
+import toast from 'react-hot-toast';
+
+export default function ImageUpload({ images, setImages }) {
+  const [isUploading, setIsUploading] = useState(false);
+
+  const onDrop = useCallback(
+    async (acceptedFiles) => {
+      setIsUploading(true);
+      const uploadedUrls = [];
+
+      for (const file of acceptedFiles) {
+        try {
+          const formData = new FormData();
+          formData.append('file', file);
+          formData.append('upload_preset', 'docs_upload_example_us_preset'); // Demo preset
+
+          // Using demo Cloudinary account for testing
+          const response = await axios.post(
+            'https://api.cloudinary.com/v1_1/demo/image/upload',
+            formData
+          );
+
+          uploadedUrls.push(response.data.secure_url);
+          toast.success(`${file.name} yuklandi`);
+        } catch (error) {
+          console.error('Upload error:', error);
+          toast.error(`${file.name} yuklanmadi`);
+        }
+      }
+
+      setImages([...images, ...uploadedUrls]);
+      setIsUploading(false);
+    },
+    [images, setImages]
+  );
+
+  const { getRootProps, getInputProps, isDragActive } = useDropzone({
+    onDrop,
+    accept: {
+      'image/*': ['.jpeg', '.jpg', '.png', '.gif', '.webp'],
+    },
+    maxSize: 5242880, // 5MB
+  });
+
+  function removeImage(index) {
+    const newImages = images.filter((_, i) => i !== index);
+    setImages(newImages);
+    toast.success('Rasm o\'chirildi');
+  }
+
+  return (
+    <div className="mb-4">
+      <label className="block text-gray-700 font-semibold mb-2">
+        Rasmlar
+      </label>
+
+      {/* Dropzone */}
+      <div
+        {...getRootProps()}
+        className={`border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition-colors ${
+          isDragActive
+            ? 'border-blue-500 bg-blue-50'
+            : 'border-gray-300 hover:border-blue-400'
+        } ${isUploading ? 'opacity-50 cursor-not-allowed' : ''}`}
+      >
+        <input {...getInputProps()} disabled={isUploading} />
+        {isUploading ? (
+          <div className="flex flex-col items-center">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-900 mb-2"></div>
+            <p className="text-gray-600">Yuklanmoqda...</p>
+          </div>
+        ) : isDragActive ? (
+          <p className="text-blue-600">Rasmlarni bu yerga tashlang...</p>
+        ) : (
+          <div>
+            <svg
+              className="w-12 h-12 mx-auto mb-4 text-gray-400"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"
+              />
+            </svg>
+            <p className="text-gray-600 mb-2">
+              Rasmlarni bu yerga torting yoki bosing
+            </p>
+            <p className="text-sm text-gray-500">
+              PNG, JPG, GIF, WEBP (max 5MB)
+            </p>
+          </div>
+        )}
+      </div>
+
+      {/* Image Preview Grid */}
+      {images.length > 0 && (
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-4">
+          {images.map((url, index) => (
+            <div key={index} className="relative group">
+              <img
+                src={url}
+                alt={`Product ${index + 1}`}
+                className="w-full h-32 object-cover rounded-lg border border-gray-300"
+              />
+              <button
+                type="button"
+                onClick={() => removeImage(index)}
+                className="absolute top-2 right-2 bg-red-600 text-white rounded-full w-6 h-6 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+              >
+                ×
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+
+      <p className="text-sm text-gray-500 mt-2">
+        Demo Cloudinary ishlatilyapti. Production uchun o'z akkauntingizni ulang.
+      </p>
+    </div>
+  );
+}
