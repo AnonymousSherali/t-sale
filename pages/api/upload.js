@@ -1,61 +1,57 @@
 import { getServerSession } from 'next-auth/next';
 import { authOptions } from './auth/[...nextauth]';
+import { v2 as cloudinary } from 'cloudinary';
+import formidable from 'formidable';
+import fs from 'fs';
 
 export const config = {
-  api: {
-    bodyParser: {
-      sizeLimit: '10mb',
-    },
-  },
+  api: { bodyParser: false },
 };
 
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET,
+});
+
 export default async function handler(req, res) {
-  // Check authentication
   const session = await getServerSession(req, res, authOptions);
   if (!session) {
     return res.status(401).json({ error: 'Tizimga kirish talab qilinadi' });
   }
 
-  if (req.method === 'POST') {
-    try {
-      const { image } = req.body;
-
-      if (!image) {
-        return res.status(400).json({ error: 'Rasm topilmadi' });
-      }
-
-      // Upload to Cloudinary using unsigned upload
-      // Using a public cloudinary cloud for demo purposes
-      // In production, you should use your own Cloudinary account
-      const cloudinaryUrl = 'https://api.cloudinary.com/v1_1/demo/image/upload';
-
-      const formData = new FormData();
-      formData.append('file', image);
-      formData.append('upload_preset', 'docs_upload_example_us_preset'); // Demo preset
-
-      const uploadResponse = await fetch(cloudinaryUrl, {
-        method: 'POST',
-        body: formData,
-      });
-
-      if (!uploadResponse.ok) {
-        throw new Error('Cloudinary upload failed');
-      }
-
-      const data = await uploadResponse.json();
-
-      res.status(200).json({
-        success: true,
-        url: data.secure_url,
-      });
-    } catch (error) {
-      console.error('Upload error:', error);
-      res.status(500).json({
-        success: false,
-        error: 'Rasm yuklashda xatolik yuz berdi',
-      });
-    }
-  } else {
-    res.status(405).json({ error: 'Method not allowed' });
+  if (req.method !== 'POST') {
+    return res.status(405).json({ error: 'Method not allowed' });
   }
+
+  if (!process.env.CLOUDINARY_CLOUD_NAME) {
+    return res.status(500).json({
+      error: 'Cloudinary sozlanmagan. .env faylida CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY va CLOUDINARY_API_SECRET ni kiriting.',
+    });
+  }
+
+  const form = formidable({ maxFileSize: 5 * 1024 * 1024 }); // 5MB
+
+  form.parse(req, async (err, _fields, files) => {
+    if (err) {
+      return res.status(400).json({ error: 'Fayl o\'qishda xatolik: ' + err.message });
+    }
+
+    const file = Array.isArray(files.file) ? files.file[0] : files.file;
+    if (!file) {
+      return res.status(400).json({ error: 'Fayl topilmadi' });
+    }
+
+    try {
+      const result = await cloudinary.uploader.upload(file.filepath, {
+        folder: 'ecommerce-products',
+        resource_type: 'image',
+      });
+      fs.unlinkSync(file.filepath);
+      res.status(200).json({ success: true, url: result.secure_url });
+    } catch (uploadError) {
+      console.error('Cloudinary upload error:', uploadError);
+      res.status(500).json({ error: 'Rasm yuklashda xatolik: ' + uploadError.message });
+    }
+  });
 }

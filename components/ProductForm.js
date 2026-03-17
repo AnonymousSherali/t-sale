@@ -36,19 +36,18 @@ export default function ProductForm({
 
     try {
       if (_id) {
-        // Update existing product
         await axios.put(`/api/products/${_id}`, data);
         toast.success("Mahsulot muvaffaqiyatli yangilandi!", { id: loadingToast });
       } else {
-        // Create new product
         await axios.post('/api/products', data);
         toast.success("Mahsulot muvaffaqiyatli qo'shildi!", { id: loadingToast });
       }
-      router.push('/products');
+      await router.push('/products');
     } catch (error) {
       const errorMsg = error.response?.data?.error || 'Xatolik yuz berdi. Iltimos qaytadan urinib ko\'ring.';
       toast.error(errorMsg, { id: loadingToast });
       setError(errorMsg);
+    } finally {
       setIsLoading(false);
     }
   }

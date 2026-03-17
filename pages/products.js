@@ -198,6 +198,7 @@ export default function Products() {
                         src={product.images[0]}
                         alt={product.title}
                         className="w-12 h-12 object-cover rounded mx-auto"
+                        onError={(e) => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'flex'; }}
                       />
                     ) : (
                       <div className="w-12 h-12 bg-gray-200 rounded mx-auto flex items-center justify-center">
