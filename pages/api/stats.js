@@ -20,9 +20,9 @@ export default async function handler(req, res) {
 
       // Calculate statistics
       const totalProducts = products.length;
-      const totalValue = products.reduce((sum, product) => sum + (product.price * product.stock), 0);
-      const totalStock = products.reduce((sum, product) => sum + product.stock, 0);
-      const lowStockProducts = products.filter(product => product.stock < 10).length;
+      const totalValue = products.reduce((sum, product) => sum + ((product.price || 0) * (product.stock || 0)), 0);
+      const totalStock = products.reduce((sum, product) => sum + (product.stock || 0), 0);
+      const lowStockProducts = products.filter(product => (product.stock || 0) < 10).length;
 
       // Get recent products (last 5)
       const recentProducts = await Product.find({})

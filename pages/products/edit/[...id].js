@@ -6,7 +6,9 @@ import axios from "axios";
 
 export default function EditProduct() {
   const router = useRouter();
-  const { id } = router.query;
+  // [...id] returns array, e.g. ['68abc123'] — take first element
+  const { id: idParam } = router.query;
+  const id = Array.isArray(idParam) ? idParam[0] : idParam;
   const [product, setProduct] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");

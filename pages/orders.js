@@ -1,4 +1,5 @@
 import Layout from "@/components/Layout";
+import Link from "next/link";
 import { useEffect, useState } from "react";
 import axios from "axios";
 import toast from "react-hot-toast";
@@ -57,8 +58,14 @@ export default function Orders() {
 
   return (
     <Layout>
-      <div className="mb-6">
+      <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-bold">Buyurtmalar</h1>
+        <Link
+          href="/orders/new"
+          className="bg-blue-900 text-white rounded-lg py-2 px-4 hover:bg-blue-800 transition-colors"
+        >
+          Yangi buyurtma
+        </Link>
       </div>
 
       {error && (
