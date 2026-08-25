@@ -2,10 +2,12 @@ import Layout from "@/components/Layout";
 import ProductForm from "@/components/ProductForm";
 import { useRouter } from "next/router";
 import { useEffect, useState } from "react";
+import { useSession } from "next-auth/react";
 import axios from "axios";
 
 export default function EditProduct() {
   const router = useRouter();
+  const { status } = useSession();
   // [...id] returns array, e.g. ['68abc123'] — take first element
   const { id: idParam } = router.query;
   const id = Array.isArray(idParam) ? idParam[0] : idParam;
@@ -14,10 +16,8 @@ export default function EditProduct() {
   const [error, setError] = useState("");
 
   useEffect(() => {
-    if (id) {
-      fetchProduct();
-    }
-  }, [id]);
+    if (id && status === 'authenticated') fetchProduct();
+  }, [id, status]);
 
   async function fetchProduct() {
     try {

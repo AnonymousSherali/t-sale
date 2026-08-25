@@ -36,7 +36,11 @@ const ProductSchema = new mongoose.Schema(
       type: String,
       trim: true,
       unique: true,
-      sparse: true, // Allows null values but enforces uniqueness when set
+      sparse: true, // Only indexes documents where sku is set
+      // The form submits '' for a blank SKU. An empty string is a real value as
+      // far as the unique index is concerned, so a second SKU-less product would
+      // collide. Normalising '' to undefined keeps those documents out of the index.
+      set: (v) => (v === '' || v === null ? undefined : v),
     },
     properties: {
       type: Object,

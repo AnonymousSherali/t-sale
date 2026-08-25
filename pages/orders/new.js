@@ -1,11 +1,13 @@
 import Layout from "@/components/Layout";
 import { useRouter } from "next/router";
 import { useEffect, useState } from "react";
+import { useSession } from "next-auth/react";
 import axios from "axios";
 import toast from "react-hot-toast";
 
 export default function NewOrder() {
   const router = useRouter();
+  const { status } = useSession();
 
   const [products, setProducts] = useState([]);
   const [customerName, setCustomerName] = useState('');
@@ -17,10 +19,11 @@ export default function NewOrder() {
   const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
+    if (status !== 'authenticated') return;
     axios.get('/api/products')
       .then(res => setProducts(res.data.data))
       .catch(err => console.error(err));
-  }, []);
+  }, [status]);
 
   function handleProductChange(index, productId) {
     const product = products.find(p => p._id === productId);
@@ -29,6 +32,7 @@ export default function NewOrder() {
       productId,
       title: product?.title || '',
       price: product?.price || 0,
+      stock: product?.stock ?? 0,
       quantity: updated[index].quantity,
     };
     setOrderItems(updated);
@@ -64,14 +68,12 @@ export default function NewOrder() {
     try {
       const items = validItems.map(i => ({
         product: i.productId,
-        title: i.title,
-        price: i.price,
         quantity: i.quantity,
       }));
+      // Prices and titles are resolved server-side from the database.
       await axios.post('/api/orders', {
         customerName, customerPhone, customerEmail, customerAddress, notes,
         items,
-        totalAmount,
       });
       toast.success("Buyurtma yaratildi!", { id: loadingToast });
       await router.push('/orders');
@@ -147,7 +149,7 @@ export default function NewOrder() {
                     <option value="">— Tanlang —</option>
                     {products.map(p => (
                       <option key={p._id} value={p._id}>
-                        {p.title} ({p.price?.toLocaleString()} so'm)
+                        {p.title} ({p.price?.toLocaleString()} so'm) — {p.stock ?? 0} dona
                       </option>
                     ))}
                   </select>
@@ -158,8 +160,17 @@ export default function NewOrder() {
                     type="number" min="1"
                     value={item.quantity}
                     onChange={e => handleQuantityChange(index, e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                      item.productId && item.quantity > (item.stock ?? 0)
+                        ? 'border-red-400 bg-red-50'
+                        : 'border-gray-300'
+                    }`}
                   />
+                  {item.productId && item.quantity > (item.stock ?? 0) && (
+                    <p className="text-xs text-red-600 mt-1">
+                      Omborda {item.stock ?? 0} dona
+                    </p>
+                  )}
                 </div>
                 <div className="col-span-3">
                   {index === 0 && <label className="block text-sm font-semibold text-gray-700 mb-1">Summa</label>}

@@ -23,12 +23,12 @@ Professional va to'liq funksional e-commerce admin panel Next.js, MongoDB va Nex
 ### 📊 Dashboard & Analytics
 - ✅ **4 ta statistika card:**
   - Jami mahsulotlar soni
-  - Umumiy qiymat (so'm)
-  - Jami stock miqdori
-  - Kam miqdordagi mahsulotlar (<10)
-- ✅ **Oxirgi 5 ta mahsulot** ko'rsatiladi
+  - Ombor qiymati va umumiy stock
+  - Buyurtmalar soni va savdo summasi
+  - Kam qolgan / tugagan mahsulotlar
+- ✅ **Oxirgi 5 ta buyurtma va mahsulot**
 - ✅ **Kategoriyalar statistikasi**
-- ✅ **Color-coded cards** (blue, green, purple, red)
+- ✅ **Kam qolgan chegarasi sozlamalardan olinadi**
 
 ### 📦 Buyurtma Boshqaruvi
 - ✅ **Order CRUD operatsiyalari**
@@ -40,8 +40,11 @@ Professional va to'liq funksional e-commerce admin panel Next.js, MongoDB va Nex
   - Yetkazildi (green)
   - Bekor qilindi (red)
 - ✅ **Inline status update**
-- ✅ **Customer ma'lumotlari**
-- ✅ **Order items ro'yxati**
+- ✅ **Status bo'yicha filter**
+- ✅ **Buyurtma yaratish sahifasi** (mahsulot tanlash, miqdor, jami summa)
+- ✅ **Avtomatik stock boshqaruvi** — buyurtma stockni kamaytiradi,
+  bekor qilish yoki o'chirish esa qaytaradi
+- ✅ **Narxlar serverda bazadan olinadi** (client tomondan o'zgartirib bo'lmaydi)
 
 ### 🔐 Authentication & Security
 - ✅ **Google OAuth** (NextAuth.js)
@@ -52,6 +55,8 @@ Professional va to'liq funksional e-commerce admin panel Next.js, MongoDB va Nex
 
 ### 🎨 UI/UX
 - ✅ **Toast notifications** (react-hot-toast)
+- ✅ **Tasdiqlash modali** (window.confirm o'rniga)
+- ✅ **Stock rangli belgilar** (yashil / sariq / qizil)
 - ✅ **Loading states**
 - ✅ **Error handling**
 - ✅ **Professional design** (Tailwind CSS)
@@ -61,9 +66,10 @@ Professional va to'liq funksional e-commerce admin panel Next.js, MongoDB va Nex
 
 ### ⚙️ Settings
 - ✅ User profil ma'lumotlari
-- ✅ Do'kon sozlamalari (placeholder)
+- ✅ **Do'kon sozlamalari** (nom, telefon, manzil, email) — bazaga saqlanadi
+- ✅ **Valyuta tanlash** (so'm, $, €, ₽)
+- ✅ **Kam qolgan ogohlantirish chegarasi** — dashboardga ta'sir qiladi
 - ✅ Tizim ma'lumotlari
-- ✅ About section
 
 ---
 
@@ -112,6 +118,11 @@ MONGODB_URI="your-mongodb-connection-string"
 # NextAuth
 NEXTAUTH_URL="http://localhost:3000"
 NEXTAUTH_SECRET="random-secret-key-32-characters-long"
+
+# Cloudinary — rasm yuklash uchun (https://cloudinary.com/)
+CLOUDINARY_CLOUD_NAME="your-cloud-name"
+CLOUDINARY_API_KEY="your-api-key"
+CLOUDINARY_API_SECRET="your-api-secret"
 
 # Environment
 NODE_ENV="development"
@@ -213,11 +224,20 @@ Brauzerda ochish: [http://localhost:3000](http://localhost:3000)
    - Jami summa
    - Status
 
+### Buyurtma yaratish
+
+1. **Buyurtmalar** sahifasida **Yangi buyurtma** tugmasini bosing
+2. Mijoz ma'lumotlarini kiriting (ism, telefon, manzil majburiy)
+3. Mahsulotlarni dropdown'dan tanlang va sonini kiriting
+   — omborda yetarli emas bo'lsa ogohlantirish chiqadi
+4. **Buyurtmani saqlash** — mahsulotlar ombordan avtomatik ayiriladi
+
 ### Buyurtma statusini o'zgartirish
 
 1. Buyurtma cardida status dropdown'ni oching
 2. Yangi statusni tanlang
 3. Avtomatik yangilanadi va toast notification ko'rsatiladi
+4. **Bekor qilindi** statusiga o'tkazilsa mahsulotlar omborga qaytariladi
 
 ### Dashboard ko'rish
 
@@ -237,13 +257,17 @@ t-sale/
 │   ├── Layout.js           # Main layout (sidebar, header, logout)
 │   ├── Nav.js              # Navigation sidebar
 │   ├── ProductForm.js      # Qayta ishlatiladigan mahsulot form
-│   └── ImageUpload.js      # Drag & drop image upload
+│   ├── ImageUpload.js      # Drag & drop image upload
+│   ├── ProductThumbnail.js # Rasm + fallback placeholder
+│   └── ConfirmDialog.js    # Tasdiqlash modali
 ├── pages/                   # Next.js sahifalar (file-based routing)
 │   ├── _app.js             # Global app wrapper
 │   ├── _document.js        # HTML document
 │   ├── index.js            # Dashboard (/)
 │   ├── products.js         # Products list (/products)
 │   ├── orders.js           # Orders list (/orders)
+│   ├── orders/
+│   │   └── new.js          # Yangi buyurtma
 │   ├── settings.js         # Settings (/settings)
 │   ├── products/
 │   │   ├── new.js          # New product form
@@ -259,13 +283,17 @@ t-sale/
 │       │   ├── index.js    # GET, POST
 │       │   └── [id].js     # GET, PUT, DELETE
 │       ├── stats.js        # Dashboard statistics
+│       ├── settings.js     # Do'kon sozlamalari
 │       └── upload.js       # Image upload (Cloudinary)
 ├── models/                  # Mongoose schemas
 │   ├── Product.js          # Product model
-│   └── Order.js            # Order model
+│   ├── Order.js            # Order model
+│   └── Setting.js          # Do'kon sozlamalari
 ├── lib/                     # Utility files
 │   ├── mongoose.js         # MongoDB connection
 │   ├── mongodb.js          # NextAuth MongoDB adapter
+│   ├── apiHelpers.js       # Auth guard, field whitelist, xato formatlash
+│   ├── orderStatus.js      # Status ro'yxati (model + API + UI uchun yagona manba)
 │   └── categories.js       # Predefined kategoriyalar
 ├── styles/
 │   └── globals.css         # Global Tailwind CSS
@@ -295,14 +323,19 @@ t-sale/
 ### Orders
 
 - `GET /api/orders` - Barcha buyurtmalar
-- `POST /api/orders` - Yangi buyurtma yaratish
+- `POST /api/orders` - Yangi buyurtma yaratish (narxlar bazadan olinadi, stock kamayadi)
 - `GET /api/orders/:id` - Bitta buyurtma
-- `PUT /api/orders/:id` - Buyurtmani yangilash (status)
-- `DELETE /api/orders/:id` - Buyurtmani o'chirish
+- `PUT /api/orders/:id` - Buyurtmani yangilash (bekor qilinsa stock qaytadi)
+- `DELETE /api/orders/:id` - Buyurtmani o'chirish (stock qaytariladi)
+
+### Settings
+
+- `GET /api/settings` - Do'kon sozlamalari
+- `PUT /api/settings` - Sozlamalarni saqlash
 
 ### Statistics
 
-- `GET /api/stats` - Dashboard statistikasi
+- `GET /api/stats` - Dashboard statistikasi (mahsulot + buyurtma + savdo)
 
 ### Upload
 
@@ -325,6 +358,8 @@ t-sale/
 | axios | 1.13.2 | HTTP client |
 | react-hot-toast | 2.6.0 | Notifications |
 | react-dropzone | 14.3.8 | File upload |
+| cloudinary | 2.9.0 | Rasm hosting |
+| formidable | 3.5.4 | Multipart form parsing |
 
 ---
 
