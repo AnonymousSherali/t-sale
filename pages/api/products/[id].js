@@ -1,23 +1,18 @@
 import dbConnect from '@/lib/mongoose';
 import Product from '@/models/Product';
-import { getServerSession } from 'next-auth/next';
-import { authOptions } from '../auth/[...nextauth]';
+import { requireSession, pickFields, sendError } from '@/lib/apiHelpers';
+
+const PRODUCT_FIELDS = ['title', 'description', 'price', 'category', 'images', 'stock', 'sku'];
 
 export default async function handler(req, res) {
-  const {
-    query: { id },
-    method,
-  } = req;
+  const { id } = req.query;
 
-  // Check authentication
-  const session = await getServerSession(req, res, authOptions);
-  if (!session) {
-    return res.status(401).json({ error: 'Tizimga kirish talab qilinadi' });
-  }
+  const session = await requireSession(req, res);
+  if (!session) return;
 
   await dbConnect();
 
-  switch (method) {
+  switch (req.method) {
     case 'GET':
       try {
         const product = await Product.findById(id);
@@ -26,13 +21,23 @@ export default async function handler(req, res) {
         }
         res.status(200).json({ success: true, data: product });
       } catch (error) {
-        res.status(400).json({ success: false, error: error.message });
+        sendError(res, error);
       }
       break;
 
     case 'PUT':
       try {
-        const product = await Product.findByIdAndUpdate(id, req.body, {
+        const updates = pickFields(req.body, PRODUCT_FIELDS);
+
+        // A blank SKU must be removed rather than stored as '', otherwise the
+        // unique index treats every SKU-less product as the same value.
+        const update = { $set: updates };
+        if (updates.sku === '' || updates.sku === null) {
+          delete updates.sku;
+          update.$unset = { sku: 1 };
+        }
+
+        const product = await Product.findByIdAndUpdate(id, update, {
           new: true,
           runValidators: true,
         });
@@ -41,24 +46,24 @@ export default async function handler(req, res) {
         }
         res.status(200).json({ success: true, data: product });
       } catch (error) {
-        res.status(400).json({ success: false, error: error.message });
+        sendError(res, error);
       }
       break;
 
     case 'DELETE':
       try {
-        const deletedProduct = await Product.findByIdAndDelete(id);
-        if (!deletedProduct) {
+        const deleted = await Product.findByIdAndDelete(id);
+        if (!deleted) {
           return res.status(404).json({ success: false, error: 'Mahsulot topilmadi' });
         }
         res.status(200).json({ success: true, data: {} });
       } catch (error) {
-        res.status(400).json({ success: false, error: error.message });
+        sendError(res, error);
       }
       break;
 
     default:
-      res.status(400).json({ success: false, error: 'Invalid method' });
-      break;
+      res.setHeader('Allow', ['GET', 'PUT', 'DELETE']);
+      res.status(405).json({ success: false, error: `${req.method} usuli qo'llab-quvvatlanmaydi` });
   }
 }

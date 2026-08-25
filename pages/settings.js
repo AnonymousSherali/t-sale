@@ -5,7 +5,7 @@ import axios from "axios";
 import toast from "react-hot-toast";
 
 export default function Settings() {
-  const { data: session } = useSession();
+  const { data: session, status } = useSession();
 
   const [shopName, setShopName] = useState('');
   const [phone, setPhone] = useState('');
@@ -17,6 +17,7 @@ export default function Settings() {
   const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
+    if (status !== 'authenticated') return;
     axios.get('/api/settings')
       .then(res => {
         const d = res.data.data;
@@ -31,7 +32,7 @@ export default function Settings() {
       })
       .catch(err => console.error(err))
       .finally(() => setIsLoading(false));
-  }, []);
+  }, [status]);
 
   async function saveSettings(e) {
     e.preventDefault();

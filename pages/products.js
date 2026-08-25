@@ -1,11 +1,15 @@
 import Layout from "@/components/Layout";
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { useSession } from "next-auth/react";
 import axios from "axios";
 import toast from "react-hot-toast";
 import { categories } from "@/lib/categories";
+import ProductThumbnail from "@/components/ProductThumbnail";
+import ConfirmDialog from "@/components/ConfirmDialog";
 
 export default function Products() {
+  const { status } = useSession();
   const [products, setProducts] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
@@ -14,10 +18,14 @@ export default function Products() {
   const [sortBy, setSortBy] = useState("newest");
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
+  const [pendingDelete, setPendingDelete] = useState(null);
 
+  // Only hit the API once NextAuth confirms a session, otherwise every page
+  // load while signed out fires a request that comes back 401.
   useEffect(() => {
-    fetchProducts();
-  }, []);
+    if (status === "authenticated") fetchProducts();
+    else if (status === "unauthenticated") setIsLoading(false);
+  }, [status]);
 
   async function fetchProducts() {
     try {
@@ -33,24 +41,23 @@ export default function Products() {
     }
   }
 
-  async function deleteProduct(id, title) {
-    if (confirm(`"${title}" mahsulotini o'chirmoqchimisiz?`)) {
-      const loadingToast = toast.loading("O'chirilmoqda...");
-      try {
-        await axios.delete(`/api/products/${id}`);
-        toast.success("Mahsulot muvaffaqiyatli o'chirildi!", { id: loadingToast });
-        fetchProducts(); // Refresh list
-      } catch (error) {
-        toast.error("O'chirishda xatolik yuz berdi", { id: loadingToast });
-        console.error(error);
-      }
+  async function deleteProduct() {
+    const { _id, title } = pendingDelete;
+    setPendingDelete(null);
+    const loadingToast = toast.loading("O'chirilmoqda...");
+    try {
+      await axios.delete(`/api/products/${_id}`);
+      toast.success(`"${title}" o'chirildi`, { id: loadingToast });
+      fetchProducts();
+    } catch (error) {
+      const msg = error.response?.data?.error || "O'chirishda xatolik yuz berdi";
+      toast.error(msg, { id: loadingToast });
     }
   }
 
-  // Filter and sort products
   const filteredProducts = products
     .filter((product) => {
-      const matchesSearch = product.title
+      const matchesSearch = (product.title || "")
         .toLowerCase()
         .includes(searchQuery.toLowerCase());
       const matchesCategory =
@@ -64,28 +71,29 @@ export default function Products() {
         case "oldest":
           return new Date(a.createdAt) - new Date(b.createdAt);
         case "price-low":
-          return a.price - b.price;
+          return (a.price || 0) - (b.price || 0);
         case "price-high":
-          return b.price - a.price;
+          return (b.price || 0) - (a.price || 0);
         case "name-az":
-          return a.title.localeCompare(b.title);
+          return (a.title || "").localeCompare(b.title || "");
         case "name-za":
-          return b.title.localeCompare(a.title);
+          return (b.title || "").localeCompare(a.title || "");
         default:
           return 0;
       }
     });
 
-  // Pagination
   const totalPages = Math.ceil(filteredProducts.length / itemsPerPage);
-  const startIndex = (currentPage - 1) * itemsPerPage;
+  // Clamp the page so deleting the last row of the last page doesn't strand the
+  // user on an empty page.
+  const safePage = Math.min(currentPage, Math.max(1, totalPages));
+  const startIndex = (safePage - 1) * itemsPerPage;
   const endIndex = startIndex + itemsPerPage;
   const paginatedProducts = filteredProducts.slice(startIndex, endIndex);
 
-  // Reset to first page when filters change
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchQuery, filterCategory, sortBy]);
+  }, [searchQuery, filterCategory, sortBy, itemsPerPage]);
 
   return (
     <Layout>
@@ -193,30 +201,7 @@ export default function Products() {
               {paginatedProducts.map((product) => (
                 <tr key={product._id} className="hover:bg-gray-50">
                   <td className="border border-gray-300 px-4 py-2 text-center">
-                    {product.images && product.images.length > 0 ? (
-                      <img
-                        src={product.images[0]}
-                        alt={product.title}
-                        className="w-12 h-12 object-cover rounded mx-auto"
-                        onError={(e) => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'flex'; }}
-                      />
-                    ) : (
-                      <div className="w-12 h-12 bg-gray-200 rounded mx-auto flex items-center justify-center">
-                        <svg
-                          className="w-6 h-6 text-gray-400"
-                          fill="none"
-                          stroke="currentColor"
-                          viewBox="0 0 24 24"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
-                          />
-                        </svg>
-                      </div>
-                    )}
+                    <ProductThumbnail product={product} />
                   </td>
                   <td className="border border-gray-300 px-4 py-2">
                     {product.title}
@@ -228,7 +213,17 @@ export default function Products() {
                     {product.price ? `${product.price.toLocaleString()} so'm` : "-"}
                   </td>
                   <td className="border border-gray-300 px-4 py-2 text-center">
-                    {product.stock}
+                    <span
+                      className={`px-2 py-1 rounded-full text-sm font-semibold ${
+                        (product.stock ?? 0) <= 0
+                          ? 'bg-red-100 text-red-800'
+                          : product.stock < 10
+                          ? 'bg-yellow-100 text-yellow-800'
+                          : 'bg-green-100 text-green-800'
+                      }`}
+                    >
+                      {product.stock ?? 0}
+                    </span>
                   </td>
                   <td className="border border-gray-300 px-4 py-2 text-center">
                     <div className="flex gap-2 justify-center">
@@ -239,7 +234,7 @@ export default function Products() {
                         Tahrirlash
                       </Link>
                       <button
-                        onClick={() => deleteProduct(product._id, product.title)}
+                        onClick={() => setPendingDelete(product)}
                         className="bg-red-600 text-white px-3 py-1 rounded hover:bg-red-700 transition-colors"
                       >
                         O'chirish
@@ -276,14 +271,14 @@ export default function Products() {
               <div className="flex items-center gap-2">
                 <button
                   onClick={() => setCurrentPage(1)}
-                  disabled={currentPage === 1}
+                  disabled={safePage === 1}
                   className="px-3 py-1 border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   «
                 </button>
                 <button
-                  onClick={() => setCurrentPage(currentPage - 1)}
-                  disabled={currentPage === 1}
+                  onClick={() => setCurrentPage(safePage - 1)}
+                  disabled={safePage === 1}
                   className="px-3 py-1 border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   ‹
@@ -294,12 +289,12 @@ export default function Products() {
                     let pageNum;
                     if (totalPages <= 5) {
                       pageNum = i + 1;
-                    } else if (currentPage <= 3) {
+                    } else if (safePage <= 3) {
                       pageNum = i + 1;
-                    } else if (currentPage >= totalPages - 2) {
+                    } else if (safePage >= totalPages - 2) {
                       pageNum = totalPages - 4 + i;
                     } else {
-                      pageNum = currentPage - 2 + i;
+                      pageNum = safePage - 2 + i;
                     }
 
                     return (
@@ -307,7 +302,7 @@ export default function Products() {
                         key={pageNum}
                         onClick={() => setCurrentPage(pageNum)}
                         className={`px-3 py-1 border rounded-lg ${
-                          currentPage === pageNum
+                          safePage === pageNum
                             ? 'bg-blue-900 text-white border-blue-900'
                             : 'border-gray-300 hover:bg-gray-50'
                         }`}
@@ -319,15 +314,15 @@ export default function Products() {
                 </div>
 
                 <button
-                  onClick={() => setCurrentPage(currentPage + 1)}
-                  disabled={currentPage === totalPages}
+                  onClick={() => setCurrentPage(safePage + 1)}
+                  disabled={safePage === totalPages}
                   className="px-3 py-1 border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   ›
                 </button>
                 <button
                   onClick={() => setCurrentPage(totalPages)}
-                  disabled={currentPage === totalPages}
+                  disabled={safePage === totalPages}
                   className="px-3 py-1 border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   »
@@ -341,6 +336,15 @@ export default function Products() {
           )}
         </div>
       )}
+
+      <ConfirmDialog
+        open={Boolean(pendingDelete)}
+        title="Mahsulotni o'chirish"
+        message={`"${pendingDelete?.title}" mahsulotini o'chirmoqchimisiz? Bu amalni qaytarib bo'lmaydi.`}
+        confirmLabel="O'chirish"
+        onConfirm={deleteProduct}
+        onCancel={() => setPendingDelete(null)}
+      />
     </Layout>
   );
 }

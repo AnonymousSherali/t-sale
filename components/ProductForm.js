@@ -15,12 +15,13 @@ export default function ProductForm({
   stock: existingStock,
   sku: existingSku,
 }) {
+  // `?? ''` rather than `|| ''` so a legitimate 0 price isn't blanked out.
   const [title, setTitle] = useState(existingTitle || '');
   const [description, setDescription] = useState(existingDescription || '');
-  const [price, setPrice] = useState(existingPrice || '');
+  const [price, setPrice] = useState(existingPrice ?? '');
   const [category, setCategory] = useState(existingCategory || '');
   const [images, setImages] = useState(existingImages || []);
-  const [stock, setStock] = useState(existingStock || 0);
+  const [stock, setStock] = useState(existingStock ?? 0);
   const [sku, setSku] = useState(existingSku || '');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
@@ -28,10 +29,29 @@ export default function ProductForm({
 
   async function saveProduct(e) {
     e.preventDefault();
+
+    const numericPrice = Number(price);
+    const numericStock = Number(stock);
+
+    if (!Number.isFinite(numericPrice) || numericPrice < 0) {
+      return setError("Narx 0 yoki undan katta son bo'lishi kerak");
+    }
+    if (!Number.isFinite(numericStock) || numericStock < 0) {
+      return setError("Miqdor 0 yoki undan katta son bo'lishi kerak");
+    }
+
     setIsLoading(true);
     setError('');
 
-    const data = { title, description, price, category, images, stock, sku };
+    const data = {
+      title: title.trim(),
+      description: description.trim(),
+      price: numericPrice,
+      category,
+      images,
+      stock: numericStock,
+      sku: sku.trim(),
+    };
     const loadingToast = toast.loading(_id ? "Yangilanmoqda..." : "Saqlanmoqda...");
 
     try {
