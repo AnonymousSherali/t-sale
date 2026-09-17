@@ -17,7 +17,14 @@ export default function Settings() {
   const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
+    if (status === 'unauthenticated') {
+      // Layout takes over with the login screen — stop waiting on a request
+      // that will never be made, otherwise the spinner never clears.
+      setIsLoading(false);
+      return;
+    }
     if (status !== 'authenticated') return;
+
     axios.get('/api/settings')
       .then(res => {
         const d = res.data.data;

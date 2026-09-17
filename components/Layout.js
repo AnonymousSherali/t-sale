@@ -2,17 +2,30 @@ import { useSession, signIn, signOut } from "next-auth/react";
 import Nav from "@/components/Nav";
 
 export default function Layout({children}) {
-  const { data: session } = useSession();
+  const { data: session, status } = useSession();
+
+  // These pages are statically generated, so the first client paint has no
+  // session yet. Without this branch every page load flashes the login screen
+  // before the real content appears.
+  if (status === 'loading') {
+    return (
+      <div className="bg-blue-900 w-screen h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-white"></div>
+      </div>
+    );
+  }
 
   if (!session) {
     return (
-      <div className="bg-blue-900 w-screen h-screen flex items-center">
-        <div className="text-center w-full">
+      <div className="bg-blue-900 w-screen h-screen flex items-center justify-center p-4">
+        <div className="text-center">
+          <h1 className="text-2xl font-bold text-white mb-1">E-commerce Admin</h1>
+          <p className="text-blue-200 mb-6">Davom etish uchun tizimga kiring</p>
           <button
             onClick={() => signIn("google")}
-            className="bg-white p-2 px-4 rounded-lg"
+            className="bg-white text-gray-700 font-semibold py-3 px-6 rounded-lg hover:bg-gray-100 transition-colors"
           >
-            Login with Google
+            Google orqali kirish
           </button>
         </div>
       </div>

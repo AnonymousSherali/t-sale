@@ -7,7 +7,11 @@ const SettingSchema = new mongoose.Schema(
     address: { type: String, trim: true, default: '' },
     email: { type: String, trim: true, default: '' },
     currency: { type: String, default: "so'm" },
-    lowStockThreshold: { type: Number, default: 10 },
+    lowStockThreshold: {
+      type: Number,
+      default: 10,
+      min: [0, "Ogohlantirish miqdori manfiy bo'lishi mumkin emas"],
+    },
   },
   { timestamps: true }
 );

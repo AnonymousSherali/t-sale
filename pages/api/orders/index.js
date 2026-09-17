@@ -47,6 +47,10 @@ export default async function handler(req, res) {
         const productMap = new Map(products.map((p) => [String(p._id), p]));
 
         const items = [];
+        // Several rows can reference the same product, so stock is checked
+        // against the combined quantity rather than each row on its own.
+        const requested = new Map();
+
         for (const item of data.items) {
           const product = productMap.get(String(item.product));
           if (!product) {
@@ -56,6 +60,9 @@ export default async function handler(req, res) {
             });
           }
           const quantity = Math.max(1, Number(item.quantity) || 1);
+          const key = String(product._id);
+          requested.set(key, (requested.get(key) || 0) + quantity);
+
           items.push({
             product: product._id,
             title: product.title,
@@ -64,28 +71,54 @@ export default async function handler(req, res) {
           });
         }
 
+        // Stock is reserved before the order exists, and each decrement is
+        // conditional on there still being enough. Two requests racing for the
+        // last unit cannot both succeed, which a read-then-write check allows.
+        const reserved = [];
+        for (const [productId, quantity] of requested) {
+          const product = productMap.get(productId);
+          const result = await Product.updateOne(
+            { _id: productId, stock: { $gte: quantity } },
+            { $inc: { stock: -quantity } }
+          );
+
+          if (result.modifiedCount === 0) {
+            // Undo whatever was already reserved so a rejected order leaves no trace.
+            await Promise.all(
+              reserved.map((r) =>
+                Product.updateOne({ _id: r.productId }, { $inc: { stock: r.quantity } })
+              )
+            );
+            return res.status(409).json({
+              success: false,
+              error: `"${product.title}" omborda yetarli emas — ${product.stock || 0} dona bor, ${quantity} dona so'ralgan`,
+            });
+          }
+          reserved.push({ productId, quantity });
+        }
+
         data.items = items;
         data.totalAmount = items.reduce((sum, i) => sum + i.price * i.quantity, 0);
 
-        // Retry once: two orders created at the same moment can derive the same
-        // order number and trip the unique index.
         let order;
         try {
-          order = await Order.create(data);
-        } catch (error) {
-          if (error?.code === 11000) {
+          // Retry once: two orders created at the same moment can derive the
+          // same order number and trip the unique index.
+          try {
             order = await Order.create(data);
-          } else {
-            throw error;
+          } catch (error) {
+            if (error?.code !== 11000) throw error;
+            order = await Order.create(data);
           }
+        } catch (error) {
+          // The order failed after stock was taken — give it back.
+          await Promise.all(
+            reserved.map((r) =>
+              Product.updateOne({ _id: r.productId }, { $inc: { stock: r.quantity } })
+            )
+          );
+          throw error;
         }
-
-        // Reserve the ordered quantity so stock reflects committed orders.
-        await Promise.all(
-          items.map((item) =>
-            Product.updateOne({ _id: item.product }, { $inc: { stock: -item.quantity } })
-          )
-        );
 
         res.status(201).json({ success: true, data: order });
       } catch (error) {
