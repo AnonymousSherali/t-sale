@@ -7,6 +7,7 @@ import toast from "react-hot-toast";
 import { categories } from "@/lib/categories";
 import ProductThumbnail from "@/components/ProductThumbnail";
 import ConfirmDialog from "@/components/ConfirmDialog";
+import ImportProducts from "@/components/ImportProducts";
 
 export default function Products() {
   const { status } = useSession();
@@ -19,6 +20,7 @@ export default function Products() {
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
   const [pendingDelete, setPendingDelete] = useState(null);
+  const [isImportOpen, setIsImportOpen] = useState(false);
 
   // Only hit the API once NextAuth confirms a session, otherwise every page
   // load while signed out fires a request that comes back 401.
@@ -97,14 +99,22 @@ export default function Products() {
 
   return (
     <Layout>
-      <div className="flex justify-between items-center mb-4">
+      <div className="flex flex-wrap justify-between items-center gap-2 mb-4">
         <h1 className="text-2xl font-bold">Mahsulotlar</h1>
-        <Link
-          className="bg-blue-900 text-white rounded-lg py-2 px-4 hover:bg-blue-800 transition-colors"
-          href={"/products/new"}
-        >
-          Yangi mahsulot qo'shish
-        </Link>
+        <div className="flex gap-2">
+          <button
+            onClick={() => setIsImportOpen(true)}
+            className="border border-blue-900 text-blue-900 rounded-lg py-2 px-4 hover:bg-blue-50 transition-colors"
+          >
+            Excel'dan import
+          </button>
+          <Link
+            className="bg-blue-900 text-white rounded-lg py-2 px-4 hover:bg-blue-800 transition-colors"
+            href={"/products/new"}
+          >
+            Yangi mahsulot qo'shish
+          </Link>
+        </div>
       </div>
 
       {error && (
@@ -344,6 +354,12 @@ export default function Products() {
         confirmLabel="O'chirish"
         onConfirm={deleteProduct}
         onCancel={() => setPendingDelete(null)}
+      />
+
+      <ImportProducts
+        open={isImportOpen}
+        onClose={() => setIsImportOpen(false)}
+        onImported={fetchProducts}
       />
     </Layout>
   );
