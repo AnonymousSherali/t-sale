@@ -19,6 +19,7 @@ Professional va to'liq funksional e-commerce admin panel Next.js, MongoDB va Nex
 - ✅ **Smart pagination** (5, 10, 25, 50 items per page)
 - ✅ **Image thumbnails** table'da
 - ✅ **Excel/CSV'dan import** — namuna fayl, tekshiruv va qatorlar bo'yicha hisobot
+- ✅ **Excel'ga eksport** — joriy filtr bo'yicha, qayta import qilsa bo'ladigan formatda
 - ✅ **Responsive design**
 
 ### 📊 Dashboard & Analytics
@@ -46,6 +47,7 @@ Professional va to'liq funksional e-commerce admin panel Next.js, MongoDB va Nex
 - ✅ **Avtomatik stock boshqaruvi** — buyurtma stockni kamaytiradi,
   bekor qilish yoki o'chirish esa qaytaradi
 - ✅ **Narxlar serverda bazadan olinadi** (client tomondan o'zgartirib bo'lmaydi)
+- ✅ **Excel'ga eksport** — buyurtmalar va mahsulotlar tafsiloti alohida varaqlarda
 
 ### 🔐 Authentication & Security
 - ✅ **Google OAuth** (NextAuth.js)
@@ -210,6 +212,27 @@ ixtiyoriy. Sarlavhalar o'zbekcha ham, inglizcha ham (`Title`, `Price`, `Stock`�
 tanib olinadi. `5 000 000` va `1,200,000` kabi formatlangan sonlar qabul qilinadi.
 Takrorlangan SKU'lar — fayl ichida ham, bazada ham — rad etiladi.
 
+### Excel'ga eksport qilish
+
+**Mahsulotlar** sahifasidagi **Excel'ga eksport** tugmasi joriy qidiruv, kategoriya
+filtri va tartiblashni hisobga oladi — yuklab olingan fayl ekrandagi jadvalga mos
+keladi. Filtr qo'llanilgan bo'lsa, tugmada nechta mahsulot eksport qilinishi
+ko'rsatiladi.
+
+Fayl `Nomi`, `Kategoriya`, `Narxi`, `Miqdor`, `Umumiy qiymat`, `SKU`, `Tavsif`,
+`Rasmlar`, `Qo'shilgan sana` ustunlaridan iborat. Narx va sana Excel'da haqiqiy
+son va sana sifatida saqlanadi, shuning uchun ularni to'g'ridan-to'g'ri
+jamlash va saralash mumkin. Sarlavha muzlatilgan va avtofiltr yoqilgan.
+
+**Eksport qilingan faylni tahrirlab, qayta import qilish mumkin** — importer
+`Narxi (so'm)` kabi o'lchov birligi qo'shilgan sarlavhalarni ham tanib oladi,
+`Umumiy qiymat` va `Qo'shilgan sana` ustunlarini esa e'tiborga olmaydi.
+
+**Buyurtmalar** sahifasida ham eksport bor. Fayl ikki varaqdan iborat:
+*Buyurtmalar* (har bir buyurtma bitta qator) va *Mahsulotlar tafsiloti*
+(har bir sotilgan mahsulot bitta qator — mahsulot kesimida jamlash uchun).
+Status filtri qo'llanilgan bo'lsa, eksport ham shu statusdagi buyurtmalarni oladi.
+
 ### Mahsulotlarni qidirish va filterlash
 
 1. **Products** sahifasida:
@@ -277,6 +300,7 @@ t-sale/
 │   ├── ImageUpload.js      # Drag & drop image upload
 │   ├── ProductThumbnail.js # Rasm + fallback placeholder
 │   ├── ImportProducts.js   # Excel import modali
+│   ├── ExportButton.js     # Excel eksport tugmasi
 │   └── ConfirmDialog.js    # Tasdiqlash modali
 ├── pages/                   # Next.js sahifalar (file-based routing)
 │   ├── _app.js             # Global app wrapper
@@ -297,10 +321,12 @@ t-sale/
 │       ├── products/
 │       │   ├── index.js    # GET, POST
 │       │   ├── [id].js     # GET, PUT, DELETE
-│       │   └── import.js   # Excel/CSV import + namuna fayl
+│       │   ├── import.js   # Excel/CSV import + namuna fayl
+│       │   └── export.js   # Excel eksport
 │       ├── orders/
 │       │   ├── index.js    # GET, POST
-│       │   └── [id].js     # GET, PUT, DELETE
+│       │   ├── [id].js     # GET, PUT, DELETE
+│       │   └── export.js   # Excel eksport
 │       ├── stats.js        # Dashboard statistics
 │       ├── settings.js     # Do'kon sozlamalari
 │       └── upload.js       # Image upload (Cloudinary)
@@ -313,6 +339,8 @@ t-sale/
 │   ├── mongodb.js          # NextAuth MongoDB adapter
 │   ├── apiHelpers.js       # Auth guard, field whitelist, xato formatlash
 │   ├── productImport.js    # Excel ustunlarini moslash va qatorlarni tekshirish
+│   ├── productFilters.js   # Filtr va tartiblash (sahifa + eksport uchun umumiy)
+│   ├── excelExport.js      # Excel varaq yasash va yuborish
 │   ├── orderStatus.js      # Status ro'yxati (model + API + UI uchun yagona manba)
 │   └── categories.js       # Predefined kategoriyalar
 ├── styles/
@@ -338,6 +366,7 @@ t-sale/
 - `POST /api/products` - Yangi mahsulot yaratish
 - `GET /api/products/import` - Namuna .xlsx faylni yuklab olish
 - `POST /api/products/import` - Excel/CSV import (`dryRun=true` — faqat tekshirish)
+- `GET /api/products/export` - Excel eksport (`search`, `category`, `sortBy` parametrlari)
 - `GET /api/products/:id` - Bitta mahsulot
 - `PUT /api/products/:id` - Mahsulotni yangilash
 - `DELETE /api/products/:id` - Mahsulotni o'chirish
@@ -349,6 +378,7 @@ t-sale/
 - `GET /api/orders/:id` - Bitta buyurtma
 - `PUT /api/orders/:id` - Buyurtmani yangilash (bekor qilinsa stock qaytadi)
 - `DELETE /api/orders/:id` - Buyurtmani o'chirish (stock qaytariladi)
+- `GET /api/orders/export` - Excel eksport (`status` parametri)
 
 ### Settings
 

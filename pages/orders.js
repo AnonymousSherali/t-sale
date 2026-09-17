@@ -5,6 +5,7 @@ import { useSession } from "next-auth/react";
 import axios from "axios";
 import toast from "react-hot-toast";
 import ConfirmDialog from "@/components/ConfirmDialog";
+import ExportButton from "@/components/ExportButton";
 import { ORDER_STATUSES, getStatusColor } from "@/lib/orderStatus";
 
 export default function Orders() {
@@ -66,14 +67,26 @@ export default function Orders() {
 
   return (
     <Layout>
-      <div className="flex justify-between items-center mb-6">
+      <div className="flex flex-wrap justify-between items-center gap-2 mb-6">
         <h1 className="text-2xl font-bold">Buyurtmalar</h1>
-        <Link
-          href="/orders/new"
-          className="bg-blue-900 text-white rounded-lg py-2 px-4 hover:bg-blue-800 transition-colors"
-        >
-          Yangi buyurtma
-        </Link>
+        <div className="flex flex-wrap gap-2">
+          <ExportButton
+            url="/api/orders/export"
+            params={{ status: filterStatus }}
+            disabled={visibleOrders.length === 0}
+            label={
+              filterStatus
+                ? `Eksport (${visibleOrders.length} ta)`
+                : "Excel'ga eksport"
+            }
+          />
+          <Link
+            href="/orders/new"
+            className="bg-blue-900 text-white rounded-lg py-2 px-4 hover:bg-blue-800 transition-colors"
+          >
+            Yangi buyurtma
+          </Link>
+        </div>
       </div>
 
       {error && (
