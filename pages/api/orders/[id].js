@@ -59,24 +59,40 @@ export default async function handler(req, res) {
           return res.status(404).json({ success: false, error: 'Buyurtma topilmadi' });
         }
 
+        const wasCancelled = existing.status === CANCELLED_STATUS;
+        const isCancelled = updates.status === CANCELLED_STATUS;
+        const reactivating = wasCancelled && updates.status && !isCancelled;
+
+        // Re-reserving happens before the status changes, so an order cannot be
+        // reactivated when the stock it needs is no longer there.
+        if (reactivating) {
+          const taken = [];
+          for (const item of existing.items) {
+            const result = await Product.updateOne(
+              { _id: item.product, stock: { $gte: item.quantity } },
+              { $inc: { stock: -item.quantity } }
+            );
+
+            if (result.modifiedCount === 0) {
+              await restoreStock(taken);
+              return res.status(409).json({
+                success: false,
+                error: `"${item.title}" omborda yetarli emas (${item.quantity} dona kerak). Buyurtmani qayta faollashtirib bo'lmaydi.`,
+              });
+            }
+            taken.push(item);
+          }
+        }
+
         const order = await Order.findByIdAndUpdate(
           id,
           { $set: updates },
           { new: true, runValidators: true }
         );
 
-        // Cancelling frees the reserved stock; un-cancelling reserves it again.
-        const wasCancelled = existing.status === CANCELLED_STATUS;
-        const isCancelled = order.status === CANCELLED_STATUS;
-
+        // Cancelling frees the stock that was reserved when the order was placed.
         if (!wasCancelled && isCancelled) {
           await restoreStock(order.items);
-        } else if (wasCancelled && !isCancelled) {
-          await Promise.all(
-            order.items.map((item) =>
-              Product.updateOne({ _id: item.product }, { $inc: { stock: -item.quantity } })
-            )
-          );
         }
 
         res.status(200).json({ success: true, data: order });
