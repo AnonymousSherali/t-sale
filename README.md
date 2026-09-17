@@ -18,6 +18,7 @@ Professional va to'liq funksional e-commerce admin panel Next.js, MongoDB va Nex
 - ✅ **6 xil sort** (yangilar, eskilar, narx, nom)
 - ✅ **Smart pagination** (5, 10, 25, 50 items per page)
 - ✅ **Image thumbnails** table'da
+- ✅ **Excel/CSV'dan import** — namuna fayl, tekshiruv va qatorlar bo'yicha hisobot
 - ✅ **Responsive design**
 
 ### 📊 Dashboard & Analytics
@@ -193,6 +194,22 @@ Brauzerda ochish: [http://localhost:3000](http://localhost:3000)
 4. **Saqlash** tugmasini bosing
 5. Toast notification ko'rsatiladi
 
+### Excel'dan import qilish
+
+1. **Mahsulotlar** sahifasida **Excel'dan import** tugmasini bosing
+2. **Namuna faylni yuklab olish** — kerakli ustunlar bilan tayyor `.xlsx`
+3. Faylni to'ldiring va oynaga torting (`.xlsx` yoki `.csv`, max 5MB)
+4. Tizim faylni tekshiradi va ko'rsatadi:
+   - nechta mahsulot qo'shiladi
+   - qaysi qatorlar o'tkazib yuboriladi va nima sababdan
+   - ogohlantirishlar (masalan, ro'yxatda yo'q kategoriya)
+5. **Qo'shish** tugmasini bosing — faqat shundan keyin bazaga yoziladi
+
+**Ustunlar:** Nomi va Narxi majburiy; Kategoriya, Tavsif, Miqdor, SKU, Rasmlar
+ixtiyoriy. Sarlavhalar o'zbekcha ham, inglizcha ham (`Title`, `Price`, `Stock`…)
+tanib olinadi. `5 000 000` va `1,200,000` kabi formatlangan sonlar qabul qilinadi.
+Takrorlangan SKU'lar — fayl ichida ham, bazada ham — rad etiladi.
+
 ### Mahsulotlarni qidirish va filterlash
 
 1. **Products** sahifasida:
@@ -259,6 +276,7 @@ t-sale/
 │   ├── ProductForm.js      # Qayta ishlatiladigan mahsulot form
 │   ├── ImageUpload.js      # Drag & drop image upload
 │   ├── ProductThumbnail.js # Rasm + fallback placeholder
+│   ├── ImportProducts.js   # Excel import modali
 │   └── ConfirmDialog.js    # Tasdiqlash modali
 ├── pages/                   # Next.js sahifalar (file-based routing)
 │   ├── _app.js             # Global app wrapper
@@ -278,7 +296,8 @@ t-sale/
 │       │   └── [...nextauth].js  # NextAuth config
 │       ├── products/
 │       │   ├── index.js    # GET, POST
-│       │   └── [id].js     # GET, PUT, DELETE
+│       │   ├── [id].js     # GET, PUT, DELETE
+│       │   └── import.js   # Excel/CSV import + namuna fayl
 │       ├── orders/
 │       │   ├── index.js    # GET, POST
 │       │   └── [id].js     # GET, PUT, DELETE
@@ -293,6 +312,7 @@ t-sale/
 │   ├── mongoose.js         # MongoDB connection
 │   ├── mongodb.js          # NextAuth MongoDB adapter
 │   ├── apiHelpers.js       # Auth guard, field whitelist, xato formatlash
+│   ├── productImport.js    # Excel ustunlarini moslash va qatorlarni tekshirish
 │   ├── orderStatus.js      # Status ro'yxati (model + API + UI uchun yagona manba)
 │   └── categories.js       # Predefined kategoriyalar
 ├── styles/
@@ -316,6 +336,8 @@ t-sale/
 
 - `GET /api/products` - Barcha mahsulotlar
 - `POST /api/products` - Yangi mahsulot yaratish
+- `GET /api/products/import` - Namuna .xlsx faylni yuklab olish
+- `POST /api/products/import` - Excel/CSV import (`dryRun=true` — faqat tekshirish)
 - `GET /api/products/:id` - Bitta mahsulot
 - `PUT /api/products/:id` - Mahsulotni yangilash
 - `DELETE /api/products/:id` - Mahsulotni o'chirish
@@ -360,6 +382,7 @@ t-sale/
 | react-dropzone | 14.3.8 | File upload |
 | cloudinary | 2.9.0 | Rasm hosting |
 | formidable | 3.5.4 | Multipart form parsing |
+| exceljs | 4.4.0 | Excel/CSV o'qish va yozish |
 
 ---
 
