@@ -8,6 +8,8 @@ import { categories } from "@/lib/categories";
 import ProductThumbnail from "@/components/ProductThumbnail";
 import ConfirmDialog from "@/components/ConfirmDialog";
 import ImportProducts from "@/components/ImportProducts";
+import ExportButton from "@/components/ExportButton";
+import { filterAndSortProducts, SORT_OPTIONS } from "@/lib/productFilters";
 
 export default function Products() {
   const { status } = useSession();
@@ -57,33 +59,12 @@ export default function Products() {
     }
   }
 
-  const filteredProducts = products
-    .filter((product) => {
-      const matchesSearch = (product.title || "")
-        .toLowerCase()
-        .includes(searchQuery.toLowerCase());
-      const matchesCategory =
-        !filterCategory || product.category === filterCategory;
-      return matchesSearch && matchesCategory;
-    })
-    .sort((a, b) => {
-      switch (sortBy) {
-        case "newest":
-          return new Date(b.createdAt) - new Date(a.createdAt);
-        case "oldest":
-          return new Date(a.createdAt) - new Date(b.createdAt);
-        case "price-low":
-          return (a.price || 0) - (b.price || 0);
-        case "price-high":
-          return (b.price || 0) - (a.price || 0);
-        case "name-az":
-          return (a.title || "").localeCompare(b.title || "");
-        case "name-za":
-          return (b.title || "").localeCompare(a.title || "");
-        default:
-          return 0;
-      }
-    });
+  // Shared with the export route so the downloaded file matches this table.
+  const filteredProducts = filterAndSortProducts(products, {
+    search: searchQuery,
+    category: filterCategory,
+    sortBy,
+  });
 
   const totalPages = Math.ceil(filteredProducts.length / itemsPerPage);
   // Clamp the page so deleting the last row of the last page doesn't strand the
@@ -101,7 +82,17 @@ export default function Products() {
     <Layout>
       <div className="flex flex-wrap justify-between items-center gap-2 mb-4">
         <h1 className="text-2xl font-bold">Mahsulotlar</h1>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
+          <ExportButton
+            url="/api/products/export"
+            params={{ search: searchQuery, category: filterCategory, sortBy }}
+            disabled={filteredProducts.length === 0}
+            label={
+              filteredProducts.length < products.length
+                ? `Eksport (${filteredProducts.length} ta)`
+                : "Excel'ga eksport"
+            }
+          />
           <button
             onClick={() => setIsImportOpen(true)}
             className="border border-blue-900 text-blue-900 rounded-lg py-2 px-4 hover:bg-blue-50 transition-colors"
@@ -155,12 +146,11 @@ export default function Products() {
               onChange={(e) => setSortBy(e.target.value)}
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
-              <option value="newest">Yangilar</option>
-              <option value="oldest">Eskilar</option>
-              <option value="price-low">Narx: Kamdan ko'pga</option>
-              <option value="price-high">Narx: Ko'pdan kamga</option>
-              <option value="name-az">Nom: A-Z</option>
-              <option value="name-za">Nom: Z-A</option>
+              {SORT_OPTIONS.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
             </select>
           </div>
         </div>
