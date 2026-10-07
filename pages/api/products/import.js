@@ -211,7 +211,7 @@ export default async function handler(req, res) {
       },
     });
   } catch (error) {
-    if (error?.code === 'ETOOBIG' || /maxFileSize/i.test(error?.message || '')) {
+    if (error?.httpCode === 413) {
       return res.status(400).json({ success: false, error: 'Fayl hajmi 5MB dan oshmasligi kerak' });
     }
     sendError(res, error);
