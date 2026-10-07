@@ -7,9 +7,11 @@ import toast from "react-hot-toast";
 import ConfirmDialog from "@/components/ConfirmDialog";
 import ExportButton from "@/components/ExportButton";
 import { ORDER_STATUSES, getStatusColor } from "@/lib/orderStatus";
+import useShopSettings, { formatMoney } from "@/lib/useShopSettings";
 
 export default function Orders() {
   const { status: authStatus } = useSession();
+  const { currency } = useShopSettings();
   const [orders, setOrders] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
@@ -198,7 +200,7 @@ export default function Orders() {
                     {(order.items || []).map((item, index) => (
                       <li key={index}>
                         {item.title} × {item.quantity} ={" "}
-                        {((item.price || 0) * (item.quantity || 0)).toLocaleString()} so'm
+                        {formatMoney((item.price || 0) * (item.quantity || 0), currency)}
                       </li>
                     ))}
                   </ul>
@@ -214,7 +216,7 @@ export default function Orders() {
 
               <div className="pt-4 border-t border-gray-200">
                 <p className="text-lg font-bold text-gray-800 text-right">
-                  Jami: {(order.totalAmount || 0).toLocaleString()} so'm
+                  Jami: {formatMoney(order.totalAmount, currency)}
                 </p>
               </div>
             </div>

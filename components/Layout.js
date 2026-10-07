@@ -1,8 +1,32 @@
 import { useSession, signIn, signOut } from "next-auth/react";
+import { useRouter } from "next/router";
 import Nav from "@/components/Nav";
+
+// NextAuth sends refused or failed sign-ins back here as `/?error=<code>`.
+const AUTH_ERRORS = {
+  AccessDenied: "Bu Google akkauntga admin panelga kirish ruxsati berilmagan.",
+  OAuthAccountNotLinked: "Bu email boshqa kirish usuli bilan bog'langan.",
+  Configuration: "Server sozlamalarida xatolik. Administratorga murojaat qiling.",
+};
+
+function AuthScreen({ title, message, error, children }) {
+  return (
+    <div className="bg-blue-900 w-screen h-screen flex items-center justify-center p-4">
+      <div className="text-center max-w-sm">
+        <h1 className="text-2xl font-bold text-white mb-1">{title}</h1>
+        <p className="text-blue-200 mb-6">{message}</p>
+        {error && (
+          <p className="mb-6 p-3 bg-red-100 text-red-800 rounded-lg text-sm">{error}</p>
+        )}
+        {children}
+      </div>
+    </div>
+  );
+}
 
 export default function Layout({children}) {
   const { data: session, status } = useSession();
+  const router = useRouter();
 
   // These pages are statically generated, so the first client paint has no
   // session yet. Without this branch every page load flashes the login screen
@@ -16,21 +40,40 @@ export default function Layout({children}) {
   }
 
   if (!session) {
+    const errorCode = router.query.error;
+    const error = errorCode ? AUTH_ERRORS[errorCode] || "Kirishda xatolik yuz berdi. Qayta urinib ko'ring." : null;
+
     return (
-      <div className="bg-blue-900 w-screen h-screen flex items-center justify-center p-4">
-        <div className="text-center">
-          <h1 className="text-2xl font-bold text-white mb-1">E-commerce Admin</h1>
-          <p className="text-blue-200 mb-6">Davom etish uchun tizimga kiring</p>
-          <button
-            onClick={() => signIn("google")}
-            className="bg-white text-gray-700 font-semibold py-3 px-6 rounded-lg hover:bg-gray-100 transition-colors"
-          >
-            Google orqali kirish
-          </button>
-        </div>
-      </div>
+      <AuthScreen title="E-commerce Admin" message="Davom etish uchun tizimga kiring" error={error}>
+        <button
+          onClick={() => signIn("google")}
+          className="bg-white text-gray-700 font-semibold py-3 px-6 rounded-lg hover:bg-gray-100 transition-colors"
+        >
+          Google orqali kirish
+        </button>
+      </AuthScreen>
     );
   }
+
+  // A session that outlived its admin rights — created before ADMIN_EMAILS was
+  // set, or for an address since removed. The API refuses it with 403, so show
+  // why instead of a panel full of failed requests.
+  if (session.user?.isAdmin === false) {
+    return (
+      <AuthScreen
+        title="Ruxsat yo'q"
+        message={`${session.user.email} akkauntiga admin panelga kirish ruxsati berilmagan.`}
+      >
+        <button
+          onClick={() => signOut()}
+          className="bg-white text-gray-700 font-semibold py-3 px-6 rounded-lg hover:bg-gray-100 transition-colors"
+        >
+          Boshqa akkaunt bilan kirish
+        </button>
+      </AuthScreen>
+    );
+  }
+
   return (
     <div className="bg-blue-900 min-h-screen flex">
       <Nav />

@@ -4,6 +4,7 @@ import axios from 'axios';
 import toast from 'react-hot-toast';
 import { categories } from '@/lib/categories';
 import ImageUpload from './ImageUpload';
+import useShopSettings from '@/lib/useShopSettings';
 
 export default function ProductForm({
   _id,
@@ -26,6 +27,7 @@ export default function ProductForm({
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const router = useRouter();
+  const { currency } = useShopSettings();
 
   async function saveProduct(e) {
     e.preventDefault();
@@ -128,7 +130,7 @@ export default function ProductForm({
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
         <div>
           <label className="block text-gray-700 font-semibold mb-2">
-            Narxi (so'm) *
+            Narxi ({currency}) *
           </label>
           <input
             type="number"

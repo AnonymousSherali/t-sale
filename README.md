@@ -51,6 +51,7 @@ Professional va to'liq funksional e-commerce admin panel Next.js, MongoDB va Nex
 
 ### 🔐 Authentication & Security
 - ✅ **Google OAuth** (NextAuth.js)
+- ✅ **Faqat ruxsat etilgan adminlar** (`ADMIN_EMAILS`)
 - ✅ **Session management**
 - ✅ **Protected API routes**
 - ✅ **Logout functionality**
@@ -122,6 +123,9 @@ MONGODB_URI="your-mongodb-connection-string"
 NEXTAUTH_URL="http://localhost:3000"
 NEXTAUTH_SECRET="random-secret-key-32-characters-long"
 
+# Admin panelga kira oladigan Google akkauntlar (vergul bilan)
+ADMIN_EMAILS="siz@gmail.com"
+
 # Cloudinary — rasm yuklash uchun (https://cloudinary.com/)
 CLOUDINARY_CLOUD_NAME="your-cloud-name"
 CLOUDINARY_API_KEY="your-api-key"
@@ -152,6 +156,19 @@ NODE_ENV="development"
 5. **Connect > Connect your application** orqali connection string oling
 6. Connection string'ni `.env` fayliga qo'shing
 
+#### Admin akkauntlarni belgilash:
+
+Google orqali kirish o'z-o'zidan **har qanday** Google akkauntni kiritadi.
+Panelga faqat `ADMIN_EMAILS` ro'yxatidagi manzillar kira oladi:
+
+```env
+ADMIN_EMAILS="siz@gmail.com,hamkor@gmail.com"
+```
+
+- **Production**'da ro'yxat bo'sh bo'lsa — hech kim kira olmaydi (xavfsiz tomonga).
+- **Development**'da bo'sh bo'lsa — hamma kira oladi va konsolda ogohlantirish chiqadi.
+- Ro'yxatdan chiqarilgan akkauntning mavjud sessiyasi ham bloklanadi.
+
 #### NextAuth Secret yaratish:
 
 ```bash
@@ -177,7 +194,7 @@ Brauzerda ochish: [http://localhost:3000](http://localhost:3000)
 ### Tizimga kirish
 
 1. Brauzerni oching: `http://localhost:3000`
-2. **Login with Google** tugmasini bosing
+2. **Google orqali kirish** tugmasini bosing
 3. Google akkaunti bilan tizimga kiring
 4. Dashboard sahifasiga yo'naltirilasiz
 
@@ -337,7 +354,9 @@ t-sale/
 ├── lib/                     # Utility files
 │   ├── mongoose.js         # MongoDB connection
 │   ├── mongodb.js          # NextAuth MongoDB adapter
+│   ├── admin.js            # ADMIN_EMAILS bo'yicha ruxsat tekshiruvi
 │   ├── apiHelpers.js       # Auth guard, field whitelist, xato formatlash
+│   ├── useShopSettings.js  # Valyuta va kam qolgan chegarasi (barcha sahifalar uchun)
 │   ├── productImport.js    # Excel ustunlarini moslash va qatorlarni tekshirish
 │   ├── productFilters.js   # Filtr va tartiblash (sahifa + eksport uchun umumiy)
 │   ├── excelExport.js      # Excel varaq yasash va yuborish

@@ -16,22 +16,35 @@ export default function EditProduct() {
   const [error, setError] = useState("");
 
   useEffect(() => {
-    if (id && status === 'authenticated') fetchProduct();
-  }, [id, status]);
+    if (!id || status !== 'authenticated') return;
 
-  async function fetchProduct() {
-    try {
-      setIsLoading(true);
-      const response = await axios.get(`/api/products/${id}`);
-      setProduct(response.data.data);
-      setError("");
-    } catch (error) {
-      setError("Mahsulotni yuklashda xatolik yuz berdi");
-      console.error(error);
-    } finally {
-      setIsLoading(false);
+    // Ignore a response that lands after the user has moved to another product.
+    let cancelled = false;
+
+    async function fetchProduct() {
+      try {
+        setIsLoading(true);
+        const response = await axios.get(`/api/products/${id}`);
+        if (cancelled) return;
+        setProduct(response.data.data);
+        setError("");
+      } catch (err) {
+        if (cancelled) return;
+        // A 404 is reported by the "not found" state below, not as an error.
+        if (err.response?.status !== 404) {
+          setError(err.response?.data?.error || "Mahsulotni yuklashda xatolik yuz berdi");
+        }
+        setProduct(null);
+      } finally {
+        if (!cancelled) setIsLoading(false);
+      }
     }
-  }
+
+    fetchProduct();
+    return () => {
+      cancelled = true;
+    };
+  }, [id, status]);
 
   return (
     <Layout>
@@ -49,7 +62,9 @@ export default function EditProduct() {
           <p className="mt-2 text-gray-600">Yuklanmoqda...</p>
         </div>
       ) : product ? (
-        <ProductForm {...product} />
+        // Keyed by id: the form seeds its state once, so switching products
+        // without a remount would keep showing the previous product's values.
+        <ProductForm key={product._id} {...product} />
       ) : (
         <div className="text-center py-8 text-red-600">
           Mahsulot topilmadi

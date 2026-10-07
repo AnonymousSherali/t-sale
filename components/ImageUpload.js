@@ -85,7 +85,12 @@ export default function ImageUpload({ images, setImages }) {
                 src={url}
                 alt={`Rasm ${index + 1}`}
                 className="w-full h-32 object-cover rounded-lg border border-gray-300"
-                onError={(e) => { e.target.src = '/placeholder-image.svg'; }}
+                onError={(e) => {
+                  // Only swap once, so a failing placeholder can't retrigger this.
+                  if (!e.currentTarget.src.endsWith('/placeholder-image.svg')) {
+                    e.currentTarget.src = '/placeholder-image.svg';
+                  }
+                }}
               />
               <button
                 type="button"

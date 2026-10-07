@@ -3,6 +3,7 @@ import { useSession } from "next-auth/react";
 import { useEffect, useState } from "react";
 import axios from "axios";
 import toast from "react-hot-toast";
+import { updateShopSettingsCache } from "@/lib/useShopSettings";
 
 export default function Settings() {
   const { data: session, status } = useSession();
@@ -46,10 +47,12 @@ export default function Settings() {
     setIsSaving(true);
     const loadingToast = toast.loading("Saqlanmoqda...");
     try {
-      await axios.put('/api/settings', { shopName, phone, address, email, currency, lowStockThreshold });
+      const response = await axios.put('/api/settings', { shopName, phone, address, email, currency, lowStockThreshold });
+      // Other pages read currency and threshold from this cache.
+      updateShopSettingsCache(response.data.data);
       toast.success("Sozlamalar saqlandi!", { id: loadingToast });
     } catch (error) {
-      toast.error("Saqlashda xatolik yuz berdi", { id: loadingToast });
+      toast.error(error.response?.data?.error || "Saqlashda xatolik yuz berdi", { id: loadingToast });
       console.error(error);
     } finally {
       setIsSaving(false);

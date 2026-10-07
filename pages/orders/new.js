@@ -4,10 +4,12 @@ import { useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
 import axios from "axios";
 import toast from "react-hot-toast";
+import useShopSettings, { formatMoney } from "@/lib/useShopSettings";
 
 export default function NewOrder() {
   const router = useRouter();
   const { status } = useSession();
+  const { currency } = useShopSettings();
 
   const [products, setProducts] = useState([]);
   const [customerName, setCustomerName] = useState('');
@@ -149,7 +151,7 @@ export default function NewOrder() {
                     <option value="">— Tanlang —</option>
                     {products.map(p => (
                       <option key={p._id} value={p._id}>
-                        {p.title} ({p.price?.toLocaleString()} so'm) — {p.stock ?? 0} dona
+                        {p.title} ({formatMoney(p.price, currency)}) — {p.stock ?? 0} dona
                       </option>
                     ))}
                   </select>
@@ -175,7 +177,7 @@ export default function NewOrder() {
                 <div className="col-span-3">
                   {index === 0 && <label className="block text-sm font-semibold text-gray-700 mb-1">Summa</label>}
                   <div className="px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-700">
-                    {(item.price * item.quantity).toLocaleString()} so'm
+                    {formatMoney(item.price * item.quantity, currency)}
                   </div>
                 </div>
                 <div className="col-span-1">
@@ -199,7 +201,7 @@ export default function NewOrder() {
 
           <div className="mt-4 pt-4 border-t border-gray-200 text-right">
             <span className="text-lg font-bold text-gray-800">
-              Jami: {totalAmount.toLocaleString()} so'm
+              Jami: {formatMoney(totalAmount, currency)}
             </span>
           </div>
         </div>

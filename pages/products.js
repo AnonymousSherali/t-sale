@@ -10,9 +10,11 @@ import ConfirmDialog from "@/components/ConfirmDialog";
 import ImportProducts from "@/components/ImportProducts";
 import ExportButton from "@/components/ExportButton";
 import { filterAndSortProducts, SORT_OPTIONS } from "@/lib/productFilters";
+import useShopSettings, { formatMoney } from "@/lib/useShopSettings";
 
 export default function Products() {
   const { status } = useSession();
+  const { currency, lowStockThreshold } = useShopSettings();
   const [products, setProducts] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
@@ -210,14 +212,14 @@ export default function Products() {
                     {product.category || "-"}
                   </td>
                   <td className="border border-gray-300 px-4 py-2 text-right">
-                    {product.price ? `${product.price.toLocaleString()} so'm` : "-"}
+                    {product.price ? formatMoney(product.price, currency) : "-"}
                   </td>
                   <td className="border border-gray-300 px-4 py-2 text-center">
                     <span
                       className={`px-2 py-1 rounded-full text-sm font-semibold ${
                         (product.stock ?? 0) <= 0
                           ? 'bg-red-100 text-red-800'
-                          : product.stock < 10
+                          : product.stock < lowStockThreshold
                           ? 'bg-yellow-100 text-yellow-800'
                           : 'bg-green-100 text-green-800'
                       }`}

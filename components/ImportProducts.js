@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useDropzone } from 'react-dropzone';
 import axios from 'axios';
 import toast from 'react-hot-toast';
+import useShopSettings, { formatMoney } from '@/lib/useShopSettings';
 
 /**
  * Two-step Excel import: the file is checked first and the user sees what will
@@ -9,6 +10,7 @@ import toast from 'react-hot-toast';
  * nothing needs to be held server-side between the two calls.
  */
 export default function ImportProducts({ open, onClose, onImported }) {
+  const { currency } = useShopSettings();
   const [file, setFile] = useState(null);
   const [report, setReport] = useState(null);
   const [isChecking, setIsChecking] = useState(false);
@@ -264,7 +266,7 @@ export default function ImportProducts({ open, onClose, onImported }) {
                             <td className="px-3 py-2">{p.title}</td>
                             <td className="px-3 py-2 text-gray-500">{p.category}</td>
                             <td className="px-3 py-2 text-right whitespace-nowrap">
-                              {p.price.toLocaleString()} so'm
+                              {formatMoney(p.price, currency)}
                             </td>
                             <td className="px-3 py-2 text-center text-gray-500">
                               {p.stock} dona
