@@ -65,8 +65,8 @@ export default async function handler(req, res) {
 
         // Re-reserving happens before the status changes, so an order cannot be
         // reactivated when the stock it needs is no longer there.
+        const taken = [];
         if (reactivating) {
-          const taken = [];
           for (const item of existing.items) {
             const result = await Product.updateOne(
               { _id: item.product, stock: { $gte: item.quantity } },
@@ -84,11 +84,28 @@ export default async function handler(req, res) {
           }
         }
 
-        const order = await Order.findByIdAndUpdate(
-          id,
-          { $set: updates },
-          { new: true, runValidators: true }
-        );
+        // The update only applies if the status is still the one read above.
+        // Without that condition two simultaneous "cancel" requests would both
+        // see an active order and both return its stock, inflating inventory.
+        let order;
+        try {
+          order = await Order.findOneAndUpdate(
+            { _id: id, status: existing.status },
+            { $set: updates },
+            { new: true, runValidators: true }
+          );
+        } catch (error) {
+          await restoreStock(taken);
+          throw error;
+        }
+
+        if (!order) {
+          await restoreStock(taken);
+          return res.status(409).json({
+            success: false,
+            error: "Buyurtma shu payt boshqa joyda o'zgartirildi. Sahifani yangilab, qayta urinib ko'ring.",
+          });
+        }
 
         // Cancelling frees the stock that was reserved when the order was placed.
         if (!wasCancelled && isCancelled) {
